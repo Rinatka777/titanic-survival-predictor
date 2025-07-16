@@ -1,20 +1,42 @@
 import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, roc_auc_score
+
+# Load data
+df = pd.read_csv('data/train.csv')  # You can adjust this path if needed
 
 def preprocess_data(df):
-    df = pd.read_csv('train.csv')
-    dfcopy = df.copy(deep= True)
+    dfcopy = df.copy(deep=True)
 
+    # Fill missing values
+    dfcopy['Age'].fillna(dfcopy['Age'].median(), inplace=True)
+    dfcopy['Embarked'].fillna(dfcopy['Embarked'].mode()[0], inplace=True)
 
-    dfcopy['Age'] = dfcopy['Age'].fillna(dfcopy['Age'].median())
-    dfcopy['Embarked'] = dfcopy['Embarked'].fillna(dfcopy['Embarked'].mode())
-    dfcopy = df.drop("Name", "PassengerId", "Cabin")
-    dfcopy["Sex"] = dfcopy["Sex"].map({"male":0, "female":1})
-    dfcopy = pd.get_dummies(df, column = ["Embarked"])
+    # Drop irrelevant columns
+    dfcopy.drop(['Name', 'PassengerId', 'Cabin', 'Ticket'], axis=1, inplace=True)
 
-    x = dfcopy.iloc[:,:]
-    y = dfcopy.iloc[:,:]
+    # Encode categorical variables
+    dfcopy['Sex'] = dfcopy['Sex'].map({'male': 0, 'female': 1})
+    dfcopy = pd.get_dummies(dfcopy, columns=['Embarked'], drop_first=True)
 
-    train,test = train_test_split(dfcopy, test_size=0.2)
+    return dfcopy
 
-    model = LogisticRegression()
-    model.fit(x, y )
+# Preprocess
+df_clean = preprocess_data(df)
+
+# Split into features and target
+X = df_clean.drop('Survived', axis=1)
+y = df_clean['Survived']
+
+# Train/test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Model training
+model = LogisticRegression(max_iter=1000)
+model.fit(X_train, y_train)
+
+# Evaluation
+y_pred = model.predict(X_test)
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("ROC AUC:", roc_auc_score(y_test, y_pred))
